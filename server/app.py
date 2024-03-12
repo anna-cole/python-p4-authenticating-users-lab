@@ -30,7 +30,7 @@ class ClearSession(Resource):
 class IndexArticle(Resource):
     
     def get(self):
-        articles = [article.to_dict() for article in Article.query.all()]
+        articles = [article.to_dict() for article in Article.query.all()] # No need to jsonify lists
         return articles, 200
 
 class ShowArticle(Resource):
@@ -42,7 +42,7 @@ class ShowArticle(Resource):
         if session['page_views'] <= 3:
 
             article = Article.query.filter(Article.id == id).first()
-            article_json = jsonify(article.to_dict())
+            article_json = jsonify(article.to_dict()) # When returning a single item, always jsonify. 
 
             return make_response(article_json, 200)
 
@@ -52,6 +52,29 @@ api.add_resource(ClearSession, '/clear')
 api.add_resource(IndexArticle, '/articles')
 api.add_resource(ShowArticle, '/articles/<int:id>')
 
+class Login(Resource):
+    def post(self):
+        username = request.get_json()['username'] #request.get_json() returns a dict {'username': 'ana'} with the username value that the user entered 
+        # breakpoint() run the frontend with endpoint /login to get the debugging session
+        user = User.query.filter(User.username == username).first()
+        session['user_id'] = user.id
+        return user.to_dict(), 200 # This is also returning json. Json, like dicts, are objects to JS
+    
+class Logout(Resource):
+    def delete(self):
+        session['user_id'] = None
+        return {}, 204 #No Content status code 
+    
+class CheckSession(Resource):
+    def get(self):
+        user_id = session.get('user_id') #session is an object, use the dict method .get() to retrieve values
+        if user_id:
+            return User.query.filter(User.id == user_id).first().to_dict(), 200
+        return {}, 401 # Unauthorized status code
+    
+api.add_resource(Login, '/login')
+api.add_resource(Logout, '/logout')
+api.add_resource(CheckSession, '/check_session')
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
